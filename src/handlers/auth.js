@@ -1,12 +1,40 @@
 const auth = require('../services/auth')
 
-const authenticate = async ctx => {
+const authenticate = async (ctx) => {
   const { email, password } = ctx.request.body
+  const { accessToken, refreshToken, refreshTokenExpiration } =
+    await auth.authenticate({ email, password })
+
+  ctx.cookies.set('refreshToken', refreshToken, {
+    httpOnly: true,
+    expires: refreshTokenExpiration,
+  })
   ctx.body = {
-    token: await auth.authenticate({ email, password }),
+    accessToken,
   }
+}
+
+const refreshToken = async (ctx) => {
+  const { accessToken, refreshToken, refreshTokenExpiration } =
+    await auth.refreshToken(ctx.cookies.get('refreshToken'))
+  ctx.cookies.set('refreshToken', refreshToken, {
+    httpOnly: true,
+    expires: refreshTokenExpiration,
+  })
+  ctx.body = {
+    accessToken,
+  }
+}
+
+const logout = async (ctx) => {
+  const { allDevices } = ctx.request.body
+  await auth.logout({ refreshTokenValue: ctx.cookies.get('refreshToken'), allDevices })
+  ctx.cookies.set('refreshToken', '')
+  ctx.body = { }
 }
 
 module.exports = {
   authenticate,
+  refreshToken,
+  logout,
 }
